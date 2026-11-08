@@ -1,4 +1,3 @@
-
 import Foundation
 import AVFoundation
 import Photos
@@ -18,11 +17,9 @@ final class CameraManager: NSObject, ObservableObject {
     private var configured = false
 
     func start() {
-        guard !configured else {
+        if configured {
             if !session.isRunning {
-                DispatchQueue.global(qos: .userInitiated).async {
-                    self.session.startRunning()
-                }
+                session.startRunning()
             }
             return
         }
@@ -57,9 +54,13 @@ final class CameraManager: NSObject, ObservableObject {
         do {
             let videoInput = try AVCaptureDeviceInput(device: camera)
 
-            if session.canAddInput(videoInput) {
-                session.addInput(videoInput)
+            guard session.canAddInput(videoInput) else {
+                session.commitConfiguration()
+                status = "Не удалось подключить камеру"
+                return
             }
+
+            session.addInput(videoInput)
 
             if audioGranted,
                let microphone = AVCaptureDevice.default(for: .audio) {
@@ -75,13 +76,12 @@ final class CameraManager: NSObject, ObservableObject {
             }
 
             session.commitConfiguration()
+
             configured = true
             isReady = true
             status = "Камера готова"
 
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.session.startRunning()
-            }
+            session.startRunning()
 
         } catch {
             session.commitConfiguration()
@@ -91,9 +91,7 @@ final class CameraManager: NSObject, ObservableObject {
 
     func stopSession() {
         if session.isRunning {
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.session.stopRunning()
-            }
+            session.stopRunning()
         }
     }
 
@@ -103,19 +101,25 @@ final class CameraManager: NSObject, ObservableObject {
             return
         }
 
-        guard !movieOutput.isRecording else { return }
+        guard !movieOutput.isRecording else {
+            return
+        }
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("mov")
 
         movieOutput.startRecording(to: url, recordingDelegate: self)
+
         isRecording = true
         status = "Идёт запись"
     }
 
     func stopRecording() {
-        guard movieOutput.isRecording else { return }
+        guard movieOutput.isRecording else {
+            return
+        }
+
         movieOutput.stopRecording()
     }
 }
@@ -136,8 +140,8 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
                 return
             }
 
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-                guard status == .authorized || status == .limited else {
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { authorization in
+                guard authorization == .authorized || authorization == .limited else {
                     Task { @MainActor in
                         self.status = "Нет разрешения на сохранение видео"
                     }
