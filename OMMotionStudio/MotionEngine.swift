@@ -1,3 +1,4 @@
+
 import Foundation
 import SwiftUI
 import Combine
@@ -24,14 +25,13 @@ struct MotionKeyframe: Identifiable, Codable, Equatable {
 @MainActor
 final class MotionEngine: ObservableObject {
 
-    // MARK: - Управление джойстиком
+    // MARK: - Джойстик
 
     @Published var joystickX: Double = 0
     @Published var joystickY: Double = 0
-
     @Published var sensitivity: Double = 1.0
 
-    // MARK: - Положение виртуального стабилизатора
+    // MARK: - Положение
 
     @Published var pan: Double = 0
     @Published var tilt: Double = 0
@@ -40,16 +40,18 @@ final class MotionEngine: ObservableObject {
 
     @Published var duration: Double = 10
     @Published var playhead: Double = 0
-
     @Published var isPlaying = false
+
+    // MARK: - Keyframes
 
     @Published var keyframes: [MotionKeyframe] = []
 
-    // MARK: - Кривая Безье
+    // MARK: - Анимация
+
+    @Published var easing: Double = 0.5
 
     @Published var controlPoint1X: Double = 0.25
     @Published var controlPoint1Y: Double = 0.1
-
     @Published var controlPoint2X: Double = 0.75
     @Published var controlPoint2Y: Double = 0.9
 
@@ -57,6 +59,9 @@ final class MotionEngine: ObservableObject {
     private var lastPlaybackDate: Date?
 
     private let storageKey = "OMMotionStudio.Keyframes"
+    private let projectStorageKey = "OMMotionStudio.Project"
+
+    // MARK: - Init
 
     init() {
         loadKeyframes()
@@ -64,15 +69,19 @@ final class MotionEngine: ObservableObject {
 
     // MARK: - Джойстик
 
+    func setJoystick(pan: Double, tilt: Double) {
+        joystickX = max(-1, min(1, pan))
+        joystickY = max(-1, min(1, tilt))
+
+        self.pan += joystickX * sensitivity
+        self.tilt += joystickY * sensitivity
+
+        self.pan = max(-1, min(1, self.pan))
+        self.tilt = max(-1, min(1, self.tilt))
+    }
+
     func moveJoystick(x: Double, y: Double) {
-        joystickX = max(-1, min(1, x))
-        joystickY = max(-1, min(1, y))
-
-        pan += joystickX * sensitivity
-        tilt += joystickY * sensitivity
-
-        pan = max(-180, min(180, pan))
-        tilt = max(-90, min(90, tilt))
+        setJoystick(pan: x, tilt: y)
     }
 
     func releaseJoystick() {
@@ -83,7 +92,6 @@ final class MotionEngine: ObservableObject {
     func resetPosition() {
         pan = 0
         tilt = 0
-
         joystickX = 0
         joystickY = 0
     }
@@ -110,7 +118,7 @@ final class MotionEngine: ObservableObject {
         saveKeyframes()
     }
 
-    func deleteKeyframe(_ frame: MotionKeyframe) {
+    func removeKeyframe(_ frame: MotionKeyframe) {
         keyframes.removeAll {
             $0.id == frame.id
         }
@@ -118,20 +126,34 @@ final class MotionEngine: ObservableObject {
         saveKeyframes()
     }
 
+    func deleteKeyframe(_ frame: MotionKeyframe) {
+        removeKeyframe(frame)
+    }
+
     func clearKeyframes() {
         keyframes.removeAll()
         playhead = 0
-
         saveKeyframes()
     }
 
     func selectKeyframe(_ frame: MotionKeyframe) {
-        playhead = frame.time
+        seek(frame.time)
         pan = frame.pan
         tilt = frame.tilt
     }
 
     // MARK: - Сохранение проекта
+
+    func saveProject() {
+        saveKeyframes()
+
+        do {
+            let data = try JSONEncoder().encode(keyframes)
+            UserDefaults.standard.set(data, forKey: projectStorageKey)
+        } catch {
+            print("Ошибка сохранения проекта: \(error)")
+        }
+    }
 
     func saveKeyframes() {
         do {
@@ -163,14 +185,22 @@ final class MotionEngine: ObservableObject {
 
     // MARK: - Timeline
 
-    func setPlayhead(_ value: Double) {
+    func seek(_ value: Double) {
         playhead = max(0, min(duration, value))
         updatePosition(at: playhead)
     }
 
-    func setDuration(_ value: Double) {
-        duration = max(1, min(300, value))
+    func setPlayhead(_ value: Double) {
+        seek(value)
+    }
+
+    func updateDuration(_ value: Double) {
+        duration = max(1, min(120, value))
         playhead = min(playhead, duration)
+    }
+
+    func setDuration(_ value: Double) {
+        updateDuration(value)
     }
 
     // MARK: - Воспроизведение
@@ -186,7 +216,7 @@ final class MotionEngine: ObservableObject {
         }
 
         if playhead >= duration {
-            playhead = 0
+            seek(0)
         }
 
         isPlaying = true
@@ -215,9 +245,7 @@ final class MotionEngine: ObservableObject {
 
     func stop() {
         pause()
-
-        playhead = 0
-        updatePosition(at: 0)
+        seek(0)
     }
 
     private func playbackStep() {
@@ -233,7 +261,6 @@ final class MotionEngine: ObservableObject {
         }
 
         let delta = now.timeIntervalSince(previousDate)
-
         lastPlaybackDate = now
 
         playhead += delta
@@ -277,12 +304,10 @@ final class MotionEngine: ObservableObject {
         }
 
         for index in 0..<(frames.count - 1) {
-
             let start = frames[index]
             let end = frames[index + 1]
 
             if time >= start.time && time <= end.time {
-
                 let segmentDuration = end.time - start.time
 
                 guard segmentDuration > 0 else {
@@ -290,7 +315,6 @@ final class MotionEngine: ObservableObject {
                 }
 
                 let rawProgress = (time - start.time) / segmentDuration
-
                 let progress = bezierProgress(rawProgress)
 
                 pan = interpolate(
@@ -318,26 +342,15 @@ final class MotionEngine: ObservableObject {
         start + (end - start) * progress
     }
 
-    // MARK: - Безье
+    // MARK: - Кривая Безье
 
     private func bezierProgress(_ value: Double) -> Double {
-
         let t = max(0, min(1, value))
 
-        let x1 = controlPoint1X
-        let y1 = controlPoint1Y
+        let smooth = t * t * (3 - 2 * t)
+        let strength = max(0, min(1, easing))
 
-        let x2 = controlPoint2X
-        let y2 = controlPoint2Y
-
-        let inverse = 1 - t
-
-        let result =
-            3 * inverse * inverse * t * y1 +
-            3 * inverse * t * t * y2 +
-            t * t * t
-
-        return max(0, min(1, result))
+        return t * (1 - strength) + smooth * strength
     }
 
     // MARK: - Очистка
