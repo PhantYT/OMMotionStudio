@@ -62,7 +62,7 @@ jobs:
           echo "Найдено приложение: $APP_PATH"
 
           cp -R "$APP_PATH" Payload/
-          zip -r OMMotionStudio.ipa Payload
+          zip -r OMMotionStudio-unsigned.ipa Payload
           rm -rf Payload
 
       - name: Upload IPA
