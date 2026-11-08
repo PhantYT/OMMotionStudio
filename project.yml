@@ -1,21 +1,36 @@
+
 name: OMMotionStudio
+
 options:
   bundleIdPrefix: com.phantyt
   deploymentTarget:
     iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: "OM Motion Studio"
+    INFOPLIST_KEY_NS BluetoothAlwaysUsageDescription: "Bluetooth используется для подключения к DJI OM 7P."
+    INFOPLIST_KEY_NS BluetoothPeripheralUsageDescription: "Bluetooth используется для диагностики стабилизатора."
+    INFOPLIST_KEY_NSCameraUsageDescription: "Камера используется для видеозаписи."
+    INFOPLIST_KEY_NSMicrophoneUsageDescription: "Микрофон используется для записи звука."
+    INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Приложение сохраняет записанные видео в медиатеку."
+
 targets:
   OMMotionStudio:
     type: application
     platform: iOS
     sources:
-      - OMMotionStudio
+      - path: OMMotionStudio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.phantyt.ommotionstudio
-        PRODUCT_NAME: OMMotionStudio
-        SWIFT_VERSION: "5.0"
+        PRODUCT_NAME: "OM Motion Studio"
         INFOPLIST_KEY_CFBundleDisplayName: "OM Motion Studio"
-        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "OM Motion Studio uses Bluetooth to discover and communicate with your DJI gimbal."
-        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_STYLE: Automatic
