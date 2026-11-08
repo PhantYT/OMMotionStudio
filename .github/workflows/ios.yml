@@ -1,30 +1,22 @@
 
-name: OM Motion Studio - iOS Build
+name: Build OM Motion Studio iOS
 
 on:
   push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build OM Motion Studio
     runs-on: macos-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Check project files
-        run: |
-          echo "Repository files:"
-          ls -la
-          test -f project.yml || {
-            echo "ERROR: project.yml not found!"
-            exit 1
-          }
 
       - name: Select Xcode
         run: |
@@ -34,42 +26,36 @@ jobs:
       - name: Install XcodeGen
         run: |
           brew install xcodegen
-          xcodegen --version
 
       - name: Generate Xcode project
         run: |
           xcodegen generate
           test -d OMMotionStudio.xcodeproj
-          echo "Xcode project generated successfully"
 
-      - name: Show available schemes
+      - name: Show schemes
         run: |
           xcodebuild -list -project OMMotionStudio.xcodeproj
 
-      - name: Build for iPhone
+      - name: Build application
         run: |
           xcodebuild \
             -project OMMotionStudio.xcodeproj \
             -scheme OMMotionStudio \
             -configuration Release \
             -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            clean build
+            build
 
       - name: Package IPA
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/OMMotionStudio.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload OMMotionStudio-unsigned.ipa
-          ls -lh OMMotionStudio-unsigned.ipa
+          zip -r OMMotionStudio-unsigned.ipa Payload
 
-      - name: Upload IPA artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: OMMotionStudio-unsigned-IPA
+          name: OM-Motion-Studio-unsigned-IPA
           path: OMMotionStudio-unsigned.ipa
-          retention-days: 7
+          retention-days: 14
