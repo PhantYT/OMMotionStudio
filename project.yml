@@ -1,4 +1,3 @@
-
 name: OMMotionStudio
 
 options:
@@ -14,8 +13,7 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_KEY_CFBundleDisplayName: "OM Motion Studio"
-    INFOPLIST_KEY_NS BluetoothAlwaysUsageDescription: "Bluetooth используется для подключения к DJI OM 7P."
-    INFOPLIST_KEY_NS BluetoothPeripheralUsageDescription: "Bluetooth используется для диагностики стабилизатора."
+    INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "Bluetooth используется для подключения к DJI OM 7P."
     INFOPLIST_KEY_NSCameraUsageDescription: "Камера используется для видеозаписи."
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "Микрофон используется для записи звука."
     INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Приложение сохраняет записанные видео в медиатеку."

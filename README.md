@@ -1,33 +1,30 @@
-# OM Motion Studio — Prototype 0.1
+# OM Motion Studio — DJI Osmo Mobile 7P
 
-Native SwiftUI + CoreBluetooth diagnostic shell for researching DJI Osmo Mobile BLE connectivity.
+Native SwiftUI + CoreBluetooth iPhone application. The BLE protocol implementation is based on [shaun-xenon/osmo-remote](https://github.com/shaun-xenon/osmo-remote), whose README reports working pan/tilt control on a physical DJI Osmo Mobile 7P.
 
-## Current scope
+## Included
 
-- Scan nearby Bluetooth Low Energy devices.
-- List discovered peripherals and signal strength.
-- Connect to a selected peripheral.
-- Enumerate GATT services and characteristics.
-- Log characteristic properties.
+- BLE scan and connection.
+- OM BLE service and characteristics: FFF0 / FFF4 / FFF5.
+- DUML frame encoder/parser with CRC-8 and CRC-16.
+- SPEED, PWM-center stop, absolute recenter and lock/follow/FPV packets.
+- 25 Hz joystick packet scheduling and BLE write-without-response chunking.
+- Incoming notification parsing and diagnostic log.
+- Motion timeline/keyframes and iPhone camera recording.
+- GitHub Actions workflow that creates an unsigned IPA artifact.
 
-**Safety:** this prototype does not write to any BLE characteristic and does not send movement commands. OM7P compatibility and its command protocol must be verified before enabling motion control.
+## Build
 
-## Build without owning a Mac
+GitHub Actions builds the iOS app on a macOS runner. Open **Actions**, run or wait for **Build OM Motion Studio iOS**, then download the `OM-Motion-Studio-unsigned-IPA` artifact.
 
-1. Create a GitHub repository and upload these files.
-2. Ensure the default branch is named `main`.
-3. Open **Actions** and run **Build iOS app** (or push a commit).
-4. Download the `OMMotionStudio-unsigned-IPA` artifact from the completed workflow.
-5. Sign/install it using a trusted sideloading method from a Windows PC. An unsigned IPA cannot be installed directly by iOS.
+The IPA is unsigned. It cannot be installed directly by iOS; it must be signed with an Apple Developer certificate or a compatible personal sideloading method.
 
-The GitHub runner provides macOS/Xcode for the build. Device installation still requires signing with an Apple ID and a compatible installation workflow.
+## Use with OM 7P
 
-## First hardware test
+1. Close DJI Mimo and disconnect the gimbal from any other BLE central.
+2. Turn on the OM 7P.
+3. In OM Motion Studio open Bluetooth, scan and connect to the OM 7P.
+4. Wait for FFF4 notifications and protocol initialization. The control screen shows the connection/protocol status.
+5. Use the joystick. Release returns a neutral SPEED/PWM command.
 
-1. Install the prototype on the iPhone.
-2. Close DJI Mimo and disconnect the gimbal from other devices.
-3. Power on the OM7P.
-4. Tap Scan and inspect the discovered BLE devices.
-5. Connect to the likely OM7P entry and send the service/characteristic UUID list back for analysis.
-
-Do not assume a device is the OM7P from its advertised name alone. Compare its advertised name, signal behaviour, services and characteristics. Do not send undocumented writes.
+This is unofficial reverse-engineered interoperability code. The source protocol is reported as working on OM7P, but this Swift port has not been validated on the user's physical unit from this environment. Use low speed first and keep the gimbal clear of obstructions.
