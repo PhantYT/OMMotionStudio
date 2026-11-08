@@ -47,11 +47,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/OMMotionStudio.app Payload/
-          zip -r OMMotionStudio-unsigned.ipa Payload
+
+          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -type d -name '*.app' -print -quit)"
+
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Не найден собранный .app"
+            exit 1
+          fi
+
+          echo "Найдено приложение: $APP_PATH"
+
+          cp -R "$APP_PATH" Payload/
+          zip -r OMMotionStudio.ipa Payload
+          rm -rf Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
