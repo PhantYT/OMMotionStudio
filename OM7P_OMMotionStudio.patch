@@ -1,0 +1,153 @@
+diff --git a/OMMotionStudio/ContentView.swift b/OMMotionStudio/ContentView.swift
+index e06253b..0000000 100644
+--- a/OMMotionStudio/ContentView.swift
++++ b/OMMotionStudio/ContentView.swift
+@@ -20,6 +20,33 @@ struct ContentView: View {
+         }
+         .tint(.cyan)
+         .preferredColorScheme(.dark)
++        .onChange(of: motion.pan) { _, value in
++            if motion.isPlaying {
++                bluetooth.sendJoystick(
++                    yaw: value,
++                    pitch: motion.tilt,
++                    maxSpeed: motionSpeed
++                )
++            }
++        }
++        .onChange(of: motion.tilt) { _, value in
++            if motion.isPlaying {
++                bluetooth.sendJoystick(
++                    yaw: motion.pan,
++                    pitch: value,
++                    maxSpeed: motionSpeed
++                )
++            }
++        }
++        .onChange(of: motion.isPlaying) { _, playing in
++            if !playing {
++                bluetooth.stopGimbal()
++            }
++        }
++    }
++
++    private var motionSpeed: Int {
++        max(120, min(1800, Int(1200 * motion.sensitivity)))
+     }
+ 
+     private var controlScreen: some View {
+@@ -58,7 +85,16 @@ struct ContentView: View {
+                         }
+ 
+                         JoystickView { x, y in
+                             motion.setJoystick(pan: x, tilt: y)
++                            if abs(x) < 0.01 && abs(y) < 0.01 {
++                                bluetooth.stopGimbal()
++                            } else {
++                                bluetooth.sendJoystick(
++                                    yaw: x,
++                                    pitch: y,
++                                    maxSpeed: motionSpeed
++                                )
++                            }
+                         }
+                         .frame(height: 260)
+ 
+@@ -100,10 +134,32 @@ struct ContentView: View {
+                         .buttonStyle(.plain)
+                     }
+ 
+-                    Text("Движение джойстика пока отображается внутри приложения и не управляет моторами OM 7P.")
++                    Text(bluetooth.protocolStatus)
+                         .font(.caption)
+-                        .foregroundStyle(.secondary)
++                        .foregroundStyle(bluetooth.canControl ? .green : .orange)
+                         .frame(maxWidth: .infinity, alignment: .leading)
++
++                    HStack(spacing: 10) {
++                        Button {
++                            bluetooth.recenter()
++                        } label: {
++                            Label("В центр", systemImage: "scope")
++                                .frame(maxWidth: .infinity)
++                                .padding(12)
++                                .background(Color.white.opacity(0.08))
++                                .clipShape(RoundedRectangle(cornerRadius: 12))
++                        }
++                        .disabled(!bluetooth.canControl)
++
++                        Button("LOCK") { bluetooth.setMode("lock") }
++                            .disabled(!bluetooth.canControl)
++                        Button("FOLLOW") { bluetooth.setMode("follow") }
++                            .disabled(!bluetooth.canControl)
++                        Button("FPV") { bluetooth.setMode("fpv") }
++                            .disabled(!bluetooth.canControl)
++                    }
++                    .font(.caption.weight(.bold))
++                    .buttonStyle(.plain)
+                 }
+                 .padding()
+             }
+@@ -249,8 +302,13 @@ struct ContentView: View {
+                             .frame(width: 9, height: 9)
+ 
+-                        Text(bluetooth.connectedName ?? bluetooth.stateText)
+-                            .font(.subheadline)
++                        VStack(alignment: .leading, spacing: 4) {
++                            Text(bluetooth.connectedName ?? bluetooth.stateText)
++                                .font(.subheadline)
++                            Text(bluetooth.protocolStatus)
++                                .font(.caption2)
++                                .foregroundStyle(bluetooth.canControl ? .green : .orange)
++                        }
+ 
+                         Spacer()
+ 
+                         if bluetooth.connectedName != nil {
+
+diff --git a/OMMotionStudio/MotionEngine.swift b/OMMotionStudio/MotionEngine.swift
+index 4c55d24..0000000 100644
+--- a/OMMotionStudio/MotionEngine.swift
++++ b/OMMotionStudio/MotionEngine.swift
+@@ -55,11 +55,8 @@ final class MotionEngine: ObservableObject {
+         joystickX = max(-1, min(1, pan))
+         joystickY = max(-1, min(1, tilt))
+ 
+-        self.pan += joystickX * sensitivity
+-        self.tilt += joystickY * sensitivity
+-
+-        self.pan = max(-1, min(1, self.pan))
+-        self.tilt = max(-1, min(1, self.tilt))
++        self.pan = joystickX
++        self.tilt = joystickY
+     }
+ 
+     func moveJoystick(x: Double, y: Double) {
+
+diff --git a/project.yml b/project.yml
+index a070cf9..0000000 100644
+--- a/project.yml
++++ b/project.yml
+@@ -12,8 +12,8 @@ settings:
+     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+     GENERATE_INFOPLIST_FILE: YES
+     INFOPLIST_KEY_CFBundleDisplayName: "OM Motion Studio"
+-    INFOPLIST_KEY_NS BluetoothAlwaysUsageDescription: "Bluetooth используется для подключения к DJI OM 7P."
+-    INFOPLIST_KEY_NS BluetoothPeripheralUsageDescription: "Bluetooth используется для диагностики стабилизатора."
++    INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "Bluetooth используется для подключения к DJI OM 7P."
++    INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription: "Bluetooth используется для диагностики стабилизатора."
+     INFOPLIST_KEY_NSCameraUsageDescription: "Камера используется для видеозаписи."
+     INFOPLIST_KEY_NSMicrophoneUsageDescription: "Микрофон используется для записи звука."
+     INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Приложение сохраняет записанные видео в медиатеку."
+
+diff --git a/.github/workflows/ios.yml b/.github/workflows/ios.yml
+index 08a2c95..0000000 100644
+--- a/.github/workflows/ios.yml
++++ b/.github/workflows/ios.yml
+@@ -53,5 +53,5 @@ jobs:
+         uses: actions/upload-artifact@v4
+         with:
+           name: OM-Motion-Studio-unsigned-IPA
+-          path: OMMotionStudio-unsigned.ipa
++          path: OMMotionStudio.ipa
+           retention-days: 14
