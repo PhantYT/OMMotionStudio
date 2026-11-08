@@ -1,0 +1,21 @@
+name: OMMotionStudio
+options:
+  bundleIdPrefix: com.phantyt
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  OMMotionStudio:
+    type: application
+    platform: iOS
+    sources:
+      - OMMotionStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phantyt.ommotionstudio
+        PRODUCT_NAME: OMMotionStudio
+        SWIFT_VERSION: "5.0"
+        INFOPLIST_KEY_CFBundleDisplayName: "OM Motion Studio"
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "OM Motion Studio uses Bluetooth to discover and communicate with your DJI gimbal."
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
